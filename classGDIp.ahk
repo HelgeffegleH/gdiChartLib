@@ -88,9 +88,7 @@ class GDIp
 		getGraphics()
 		{
 			if !( This.hasKey( "pGraphics" ) )
-			{
 				This.pGraphics := new GDIp.Graphics( This )
-			}
 			return This.pGraphics
 		}
 		
@@ -101,9 +99,16 @@ class GDIp
 		
 		getSize()
 		{
-			DllCall( "gdiplus\GdipGetImageWidth",  "Ptr", pBitmap, "UInt*", w )
-			DllCall( "gdiplus\GdipGetImageHeight", "Ptr", pBitmap, "UInt*", h )
+			DllCall( "gdiplus\GdipGetImageWidth",  "Ptr", This.ptr, "UInt*", w )
+			DllCall( "gdiplus\GdipGetImageHeight", "Ptr", This.ptr, "UInt*", h )
 			return [ w, h ]
+		}
+		
+		getRect()
+		{
+			size := This.getSize()
+			size.insertAt( 1, 0, 0 )
+			return size
 		}
 		
 		saveToFile( fileName )
@@ -310,6 +315,27 @@ class GDIp
 			Loop, 4
 				outData.rect.Push( numGet( outputRectF, A_Index * 4 -4, "float" ) )
 			return outData
+		}
+		
+		/*
+			
+			addClipRect: add a rectangle to the clipping region ( a region that doesn't get drawn on )
+			
+			rect:        defines the additional rectangle
+			
+			combineMode: defines an additional combining mode
+			CombineModeReplace = 0, CombineModeIntersect = 1, CombineModeUnion = 2, CombineModeXor = 3, CombineModeExclude = 4, CombineModeComplement = 5
+			
+		*/
+		
+		setClipRect( rect, combineMode := 0 )
+		{
+			DllCall( "gdiplus\GdipSetClipRect", "UPtr", This.ptr, "float", rect.1, "float", rect.2, "float", rect.3, "float", rect.4, "UInt", combineMode )
+		}
+		
+		resetClip()
+		{
+			DllCall( "gdiplus\GdipResetClip", "UPtr", This.ptr )
 		}
 		
 	}

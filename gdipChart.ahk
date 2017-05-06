@@ -57,7 +57,7 @@ class gdipChart
 	setVisible( bVisible := true )
 	{
 		bVisible := !!bVisible 
-		if This.visible^bVisible
+		if ( This.getVisible() ^ bVisible )
 		{
 			This.visible := bVisible
 			This.sendRedraw()
@@ -91,10 +91,10 @@ class gdipChart
 	
 	getControlRect()
 	{
-		static rectI := "", init := VarSetCapacity( rectI, 16 )
+		static rectI := "", init := VarSetCapacity( rectI, 16, 1 )
 		if This.hasKey( "controlRect" )
 			return This.controlRect.clone()
-		DllCall( "getClientRect", "UPtr", This.getHWND(), "UPtr", &rectI )
+		DllCall( "GetClientRect", "UPtr", This.getHWND(), "UPtr", &rectI )
 		outRect := []
 		Loop 4
 			outRect.Push( numGet( rectI, A_Index * 4 - 4, "UInt" ) )
@@ -111,7 +111,7 @@ class gdipChart
 		;Then combine them
 		sourceRect := This.getFieldRect()
 		;Get the position of the Field ( basically the part of the data the Chart is displaying )
-		translateRect := [ 0, 0, targetFieldRect.3 / sourceRect.3, -targetFieldRect.4 / sourceRect.4 ]
+		translateRect := [ 0, 0, targetFieldRect.3 / sourceRect.3, targetFieldRect.4 / sourceRect.4 ]
 		translateRect.1 := targetFieldRect.1 - sourceRect.1 * translateRect.3
 		translateRect.2 := targetFieldRect.2 - sourceRect.2 * translateRect.4
 		return { translate: translateRect, region: targetFieldRect }
@@ -144,7 +144,7 @@ class gdipChart
 		This.touch()
 	}
 	
-	getMarging()
+	getMargin()
 	{
 		return This.margin
 	}
@@ -185,10 +185,11 @@ class gdipChart
 		{
 			if This.hasChanged
 			{
+				This.hasChanged := 0
 				This.prepareBuffers()
 				This.drawBackGround()
 				This.drawGrid()
-				This.drawDataStream()
+				This.drawData()
 				This.drawAxis()
 			}
 			This.flushToGUI()
@@ -197,7 +198,11 @@ class gdipChart
 	
 	prepareBuffers()
 	{
-		This.bitmap := new GDIp.Bitmap( ( Thi.getControlRect().removeAt( 1, 2 ) )* )
+		size := This.getControlRect()
+		size.removeAt( 1, 2 )
+		This.bitmap := new GDIp.Bitmap( size )
+		This.bitmap.getGraphics().setInterpolationMode( 7 )
+		This.bitmap.getGraphics().setSmoothingMode( 4 )
 	}
 	
 	drawBackGround()
@@ -207,13 +212,14 @@ class gdipChart
 	
 	drawData()
 	{
-		graphics     := This.getGraphics()
-		pen          := new Gdip.Pen( 0xFF000000 )
+		graphics     := This.bitmap.getGraphics()
+		pen          := new GDIp.Pen( 0xFF000000, 1 )
 		brush        := new Gdip.SolidBrush( 0xFF000000 )
 		frameRegion  := This.getMultiplier()
 		translate    := frameRegion.translate
 		fieldRect    := frameRegion.region
-		
+		graphics.setClipRect( This.bitmap.getRegion() )
+		graphics.setClipRect( fieldRect, 3 )
 		For each, visibleDataStream in This.visibleData
 		{
 			streamColor := visibleDataStream.getColor()
@@ -221,24 +227,36 @@ class gdipChart
 			brush.setColor( streamColor )
 			data := visibleDataStream.getData()
 			For each, point in data
-				graphics.drawLines( pen, data )
-			graphics.fillPie
+			{
+				thisPoint := [ Round( point.1 * translate.3 + translate.1 ), Round( point.2 * translate.4 + translate.2 ) ]
+ 				if isObject( lastpoint )
+					graphics.drawLine( pen, [ lastpoint, thispoint ] )
+ 				lastPoint := thispoint
+			}
 		}
+		graphics.resetClip()
+	}
+	
+	flushToGUI()
+	{
+		targetDC := new GDI.DC( This.gethWND() )
+		graphics := targetDC.getGraphics()
+		graphics.drawBitmap( This.bitmap, This.getControlRect(), This.bitmap.getRect() )
 	}
 	
 	
 	registerRedraw()
 	{
 		hWND := This.getWindowhWND()
-		if !gdipChart.hasKey( "windows" )
+		if !( gdipChart.hasKey( "windows" ) )
 		{
 			OnMessage( 0xF, gdipChart.WM_PAINT )
-			gdipChart.windows := { hWND: { &This: new indirectReference( This ) } }
+			gdipChart.windows := { ( hWND ): { &This: new indirectReference( This ) } }
 		}
 		else if !gdipChart.windows.hasKey( hWND )
-			gdipChar.windows[ hWND ] := { &This: new indirectReference( This ) }
+			gdipChart.windows[ hWND ] := { ( &This ): new indirectReference( This ) }
 		else
-			gdipChar.windows[ hWND, &This ] := new indirectReference( This )
+			gdipChart.windows[ hWND, &This ] := new indirectReference( This )
 	}
 	
 	unregisterRedraw()
@@ -256,14 +274,15 @@ class gdipChart
 	
 	WM_PAINT( lParam, msg, hWND )
 	{
-		for each, object in gdipChart.windows[ hWND ]
-			object.draw()
+		arr := gdipChart.windows[ hWND + 0 ]
+		for each, obj in arr
+			obj.draw()
 	}
 	
 	
 	addDataStream( data := "", color:="", name := "" )
 	{
-		dataStream := new This.DataStream( This, name, color, data )
+		dataStream := new This.DataStream( This, data, color, name )
 		This.allData[ &dataStream ] := new indirectReference( dataStream )
 		return dataStream
 	}
@@ -297,7 +316,7 @@ class gdipChart
 		setVisible( bVisible := true )
 		{
 			bVisible := !!bVisible 
-			if ( This.visible ^ bVisible )
+			if ( This.getVisible() ^ bVisible )
 			{
 				This.visible := bVisible
 				if This.visible
