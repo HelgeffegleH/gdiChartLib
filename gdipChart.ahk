@@ -1,5 +1,11 @@
 ﻿#Include classGDIp.ahk
 
+/*
+A rewrite of Nighs gdiChart.ahk
+Thanks for gdiCharts awesome code.
+	
+*/
+
 class gdipChart
 {
 	
@@ -111,9 +117,9 @@ class gdipChart
 		;Then combine them
 		sourceRect := This.getFieldRect()
 		;Get the position of the Field ( basically the part of the data the Chart is displaying )
-		translateRect := [ 0, 0, targetFieldRect.3 / sourceRect.3, targetFieldRect.4 / sourceRect.4 ]
+		translateRect := [ 0, 0, targetFieldRect.3 / sourceRect.3, -targetFieldRect.4 / sourceRect.4 ]
 		translateRect.1 := targetFieldRect.1 - sourceRect.1 * translateRect.3
-		translateRect.2 := targetFieldRect.2 - sourceRect.2 * translateRect.4
+		translateRect.2 := targetFieldRect.2 - ( sourceRect.2 + sourceRect.4 ) * translateRect.4
 		return { translate: translateRect, region: targetFieldRect }
 	}
 	
@@ -228,13 +234,43 @@ class gdipChart
 			data := visibleDataStream.getData()
 			For each, point in data
 			{
-				thisPoint := [ Round( point.1 * translate.3 + translate.1 ), Round( point.2 * translate.4 + translate.2 ) ]
- 				if isObject( lastpoint )
+				thisPoint := [ point.1 * translate.3 + translate.1, point.2 * translate.4 + translate.2 ]
+ 				if ( isObject( lastpoint ) && ( thispoint.1 >= fieldRect.1 ) && ( thispoint.1 <= fieldRect.1 + fieldRect.3 ) )
+					graphics.drawLine( pen, [ lastpoint, thispoint ] ), lastPointDrawn := 1
+				else if ( lastPointDrawn )
+				{
 					graphics.drawLine( pen, [ lastpoint, thispoint ] )
+					break
+				}
  				lastPoint := thispoint
 			}
 		}
 		graphics.resetClip()
+	}
+	
+	drawAxis()
+	{
+		graphics  := This.bitmap.getGraphics()
+		pen       := new GDIp.pen( 0xFF000000, 2 )
+		
+		fieldRect := This.getMultiplier().region
+		origin    := [ fieldRect.1, fieldRect.2 + fieldRect.4 ]
+		xTarget   := [ origin.1 + fieldRect.3, origin.2 ]
+		yTarget   := [ origin.1, origin.2 - fieldRect.4 ]
+		
+		graphics.drawLine( pen, [ origin, xTarget ] )
+		
+		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 - 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
+		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 + 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
+		;Arrows
+		
+		graphics.drawLine( pen, [ origin, yTarget ] )
+		graphics.drawLine( pen, [ [ yTarget.1 - 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
+		graphics.drawLine( pen, [ [ yTarget.1 + 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
+		
+		/*
+			Thanks to Nigh for these Awesome Arrows
+		*/
 	}
 	
 	flushToGUI()
