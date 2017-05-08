@@ -282,6 +282,10 @@ class gdipChart
 		graphics.drawBitmap( This.bitmap, This.getControlRect(), This.bitmap.getRect() )
 	}
 	
+	flushToFile( fileName )
+	{
+		This.bitmap.saveToFile( fileName )
+	}
 	
 	registerRedraw()
 	{
