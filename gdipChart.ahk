@@ -232,6 +232,8 @@ class gdipChart
 			pen.setColor( streamColor )
 			brush.setColor( streamColor )
 			data := visibleDataStream.getData()
+			lastPoint      := ""
+			lastPointDrawn := ""
 			For each, point in data
 			{
 				thisPoint := [ point.1 * translate.3 + translate.1, point.2 * translate.4 + translate.2 ]
@@ -240,7 +242,7 @@ class gdipChart
 				else if ( lastPointDrawn )
 				{
 					graphics.drawLine( pen, [ lastpoint, thispoint ] )
-					break
+					break, 1
 				}
  				lastPoint := thispoint
 			}
