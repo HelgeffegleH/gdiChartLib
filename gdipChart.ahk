@@ -175,13 +175,27 @@ class gdipChart
 	touch()
 	{
 		This.hasChanged := 1
-		if This.getVisible()
+		if ( This.getVisible() && !This.getFreezeRedraw() )
 			This.sendRedraw()
 	}
 	
 	sendRedraw()
 	{
 		SendMessage,0xF,0,0,,% "ahk_id " . This.getWindowHWND() 
+	}
+	
+	setFreezeRedraw( bFreeze )
+	{
+		bFreeze := !!bFreeze
+		if ( This.getFreeze() && !bFreeze && This.hasChanged )
+			This.freeze := bFreeze, This.touch
+		else
+			This.freeze
+	}
+	
+	getFreezeRedraw()
+	{
+		return This.freeze
 	}
 	
 	
@@ -270,11 +284,9 @@ class gdipChart
 		graphics.drawLine( pen, [ [ yTarget.1 - 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		graphics.drawLine( pen, [ [ yTarget.1 + 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		
-		/*
-			Thanks to Nigh for these Awesome Arrows
-		*/
+		;Thanks to Nigh for these Awesome Arrows
 	}
-	
+
 	flushToGUI()
 	{
 		targetDC := new GDI.DC( This.gethWND() )
