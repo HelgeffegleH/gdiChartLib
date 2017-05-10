@@ -14,6 +14,7 @@ class gdipChart
 		This.API := new GDIp()
 		This.allData     := []
 		This.visibleData := []
+		This.axes        := new This.Axes( This )
 		This.sethWND( hWND )
 		if controlRect
 			This.setControlRect( controlRect )
@@ -107,8 +108,13 @@ class gdipChart
 		return outRect
 	}
 	
+	isControlRectRelative()
+	{
+		return !This.hasKey( "controlRect" )
+	}
 	
-	getMultiplier()
+	
+	getFrameRegion()
 	{
 		targetRect := This.getControlRect()
 		marginRect := This.getMargin()
@@ -117,10 +123,15 @@ class gdipChart
 		;Then combine them
 		sourceRect := This.getFieldRect()
 		;Get the position of the Field ( basically the part of the data the Chart is displaying )
-		translateRect := [ 0, 0, targetFieldRect.3 / sourceRect.3, -targetFieldRect.4 / sourceRect.4 ]
-		translateRect.1 := targetFieldRect.1 - sourceRect.1 * translateRect.3
-		translateRect.2 := targetFieldRect.2 - ( sourceRect.2 + sourceRect.4 ) * translateRect.4
-		return { translate: translateRect, region: targetFieldRect }
+		translateRect    := [ 0, 0, targetFieldRect.3 / sourceRect.3, -targetFieldRect.4 / sourceRect.4 ]
+		translateRect.1  := targetFieldRect.1 - sourceRect.1 * translateRect.3
+		translateRect.2  := targetFieldRect.2 - ( sourceRect.2 + sourceRect.4 ) * translateRect.4
+		
+		translateRectFixed   := translateRect.Clone()
+		translateRectFixed.1 := targetFieldRect.1
+		translateRectFixed.2 := targetFieldRect.2 - sourceRect.4 * translateRect.4
+		
+		return { translate: translateRect, region: targetFieldRect, translateFixed: translateRectFixed }
 	}
 	
 	
@@ -210,7 +221,7 @@ class gdipChart
 				This.drawBackGround()
 				This.drawGrid()
 				This.drawData()
-				This.drawAxis()
+				This.drawAxes()
 			}
 			This.flushToGUI()
 		}
@@ -235,7 +246,7 @@ class gdipChart
 		graphics     := This.bitmap.getGraphics()
 		pen          := new GDIp.Pen( 0xFF000000, 1 )
 		brush        := new Gdip.SolidBrush( 0xFF000000 )
-		frameRegion  := This.getMultiplier()
+		frameRegion  := This.getFrameRegion()
 		translate    := frameRegion.translate
 		fieldRect    := frameRegion.region
 		graphics.setClipRect( This.bitmap.getRegion() )
@@ -264,29 +275,46 @@ class gdipChart
 		graphics.resetClip()
 	}
 	
-	drawAxis()
+	drawAxes()
 	{
+		axes      := This.getAxes()
+		if !axes.getVisible()
+			return
 		graphics  := This.bitmap.getGraphics()
-		pen       := new GDIp.pen( 0xFF000000, 2 )
+		pen       := new GDIp.pen( axes.getColor(), 2 )
+		fieldRect := This.getFrameRegion()
 		
-		fieldRect := This.getMultiplier().region
-		origin    := [ fieldRect.1, fieldRect.2 + fieldRect.4 ]
-		xTarget   := [ origin.1 + fieldRect.3, origin.2 ]
-		yTarget   := [ origin.1, origin.2 - fieldRect.4 ]
 		
-		graphics.drawLine( pen, [ origin, xTarget ] )
+		axesOrigin      := axes.getOrigin()
+		translate       := axes.getAttached() ? fieldRect.translate : fieldRect.translateFixed
+		axesPixelOrigin := [ axesOrigin.1 * translate.3 + translate.1, axesOrigin.2 * translate.4 + translate.2 ]
 		
+		if ( axesPixelOrigin.1 < fieldRect.region.1 )
+			axesDisplace := 1, axesPixelOrigin.1 := fieldRect.region.1
+		else if ( axesPixelOrigin.1 > fieldRect.region.1 + fieldRect.region.3 )
+			axesDisplace := 3, axesPixelOrigin.1 := fieldRect.region.1 + fieldRect.region.3
+		if ( axesPixelOrigin.2 < fieldRect.region.2 )
+			axesDisplace := axesDisplace | 4, axesPixelOrigin.2 := fieldRect.region.2
+		else if ( axesPixelOrigin.2 > fieldRect.region.2 + fieldRect.region.4 )
+			axesDisplace := axesDisplace | 8, axesPixelOrigin.2 := fieldRect.region.2 + fieldRect.region.4
+		
+		xAxis   := [ [ fieldRect.region.1, axesPixelOrigin.2 ], [ fieldRect.region.1 + fieldRect.region.3, axesPixelOrigin.2 ] ]
+		yAxis   := [ [ axesPixelOrigin.1, fieldRect.region.2 ], [ axesPixelOrigin.1, fieldRect.region.2 + fieldRect.region.4 ] ]
+		
+		graphics.drawLine( pen, xAxis )
+		xTarget := xAxis.2
 		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 - 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
 		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 + 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
 		;Arrows
 		
-		graphics.drawLine( pen, [ origin, yTarget ] )
+		graphics.drawLine( pen, yAxis )
+		yTarget := yAxis.1
 		graphics.drawLine( pen, [ [ yTarget.1 - 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		graphics.drawLine( pen, [ [ yTarget.1 + 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		
 		;Thanks to Nigh for these Awesome Arrows
 	}
-
+	
 	flushToGUI()
 	{
 		targetDC := new GDI.DC( This.gethWND() )
@@ -305,6 +333,8 @@ class gdipChart
 		if !( gdipChart.hasKey( "windows" ) )
 		{
 			OnMessage( 0xF, gdipChart.WM_PAINT )
+			OnMessage( 0x214, gdipChart.WM_SIZEing )
+			OnMessage( 0x5, gdipChart.WM_SIZEing )
 			gdipChart.windows := { ( hWND ): { &This: new indirectReference( This ) } }
 		}
 		else if !gdipChart.windows.hasKey( hWND )
@@ -323,6 +353,8 @@ class gdipChart
 		{
 			gdipChar.Delete( "windows" )
 			OnMessage( 0xF, gdipChart.WM_PAINT, 0 )
+			OnMessage( 0x214, gdipChart.WM_SIZEing, 0 )
+			OnMessage( 0x5, gdipChart.WM_SIZEing, 0 )
 		}
 	}
 	
@@ -333,6 +365,13 @@ class gdipChart
 			obj.draw()
 	}
 	
+	WM_SIZEing( lParam, msg, hWND )
+	{
+		arr := gdipChart.windows[ hWND + 0 ]
+		for each, obj in arr
+			if ( obj.isControlRectRelative() && ( hWND = obj.getHWND() ) )
+				obj.setControlRect()
+	}
 	
 	addDataStream( data := "", color:="", name := "" )
 	{
@@ -447,6 +486,86 @@ class gdipChart
 	removeVisibleData( dataStream )
 	{
 		This.visibleData.Delete( &dataStream )
+	}
+	
+	getAxes()
+	{
+		return This.axes
+	}
+	
+	class Axes
+	{
+		
+		__New( parent )
+		{
+			This.setColor( 0xFF000000 )
+			This.setOrigin( [ 0, 0 ] )
+			This.parent := parent
+			This.setVisible()
+		}
+		
+		setVisible( bVisible := true )
+		{
+			bVisible := !!bVisible 
+			if ( This.getVisible() ^ bVisible )
+			{
+				This.visible := bVisible
+				This.parent.touch()
+			}
+		}
+		
+		getVisible()
+		{
+			return This.hasKey( "visible" ) && This.visible
+		}
+		
+		setColor( color )
+		{
+			This.color := color
+			This.touch()
+		}
+		
+		getColor()
+		{
+			return This.color
+		}
+		
+		/*
+			origin: A point ( an array in the form [ x, y ] ) that defines the axes position relative to or on the field.
+		*/
+		
+		setOrigin( origin )
+		{
+			This.origin := origin
+			This.touch()
+		}
+		
+		getOrigin()
+		{
+			return This.origin
+		}
+		
+		setAttached( bAttached )
+		{
+			bAttached := !!bAttached
+			if ( This.getAttached() ^ bAttached )
+			{
+				This.attached := bAttached
+				This.touch()
+			}
+		}
+		
+		getAttached()
+		{
+			return This.hasKey( "attached" ) && This.attached
+		}
+		
+		touch()
+		{
+			If This.getVisible()
+				This.parent.touch()
+		}
+		
 	}
 	
 }
