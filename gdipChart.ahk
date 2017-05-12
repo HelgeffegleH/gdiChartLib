@@ -358,7 +358,7 @@ class gdipChart
 		{
 			This.setColor( 0xFF000000 )
 			This.setOrigin( [ 0, 0 ] )
-			This.parent := parent
+			This.parent := new indirectReference( parent )
 			This.setVisible()
 		}
 		
@@ -439,7 +439,7 @@ class gdipChart
 		
 		__New( parent )
 		{
-			This.parent := parent
+			This.parent := new indirectReference( parent )
 			This.setVisible( 0 )
 			This.setOrigin( [ 0, 0 ] )
 			This.setFieldSize( [ 1, 1 ] )
