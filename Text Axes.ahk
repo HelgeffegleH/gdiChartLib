@@ -15,7 +15,7 @@ chart1.setVisible()
 Start := A_TickCount
 SetTimer,Rotate,15
 GoSub,Rotate
-GUI,Show, w600 h400
+GUI,Show, w600 h600
 return
 
 Rotate:

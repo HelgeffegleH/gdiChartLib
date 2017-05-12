@@ -444,7 +444,7 @@ class gdipChart
 			This.setOrigin( [ 0, 0 ] )
 			This.setFieldSize( [ 1, 1 ] )
 			This.setFieldsPerView( 10 )
-			This.setColor( 0xFF7E7E7E )
+			This.setColor( 0xFFA0A0A0 )
 			This.setVisible()
 			
 		}
@@ -547,20 +547,27 @@ class gdipChart
 	{
 		grid         := This.getGrid()
 		
-		
 		if !( grid.getVisible() )	
 			return
-		
-		graphics     := This.bitmap.getGraphics()
-		pen          := new GDIp.Pen( grid.getColor(), 1 )
 		
 		fieldSize    := grid.getFieldSize()
 		fieldsPerView:= grid.getFieldsPerView()
 		origin       := grid.getOrigin()
-		fieldRect    := This.getFieldRect()
 		
-		fieldSize    := [ fieldSize.1 * ( 2 ** Round( log2(  fieldRect.3 / fieldsPerView / fieldSize.1 ) ) ), fieldSize.2 * ( 2 ** Round( log2( fieldRect.4 / fieldsPerView / fieldSize.2  ) ) ) ]
+		fieldRect    := This.getFieldRect()
+		region       := This.getFrameRegion().region
+		
+		fieldsPerX   := ( region.3 / region.4 ) ** 0.5 * fieldsPerView 
+		fieldsPerY   := ( region.4 / region.3 ) ** 0.5 * fieldsPerView 
+		
+		fieldSize    := [ fieldSize.1 * ( 2 ** Round( log2(  fieldRect.3 / fieldsPerX / fieldSize.1 ) ) ), fieldSize.2 * ( 2 ** Round( log2( fieldRect.4 / fieldsPerY / fieldSize.2  ) ) ) ]
 		offset       := [ fieldRect.1 - modulo( origin.1 + fieldRect.1, fieldSize.1 ) , fieldRect.2 - modulo( origin.2 + fieldRect.2, fieldSize.2 ) ]
+		
+		
+		graphics     := This.bitmap.getGraphics()
+		pen          := new GDIp.Pen( grid.getColor(), 1 )
+		graphics.setClipRect( This.bitmap.getRegion() )
+		graphics.setClipRect( region, 3 )
 		
 		Loop % ceil( fieldRect.3 / fieldSize.1 )
 		{
@@ -573,6 +580,8 @@ class gdipChart
 			pos := offset.2 + fieldSize.2 * A_Index
 			graphics.drawLine( pen, This.getInfiniteLine( [ [ 0 , pos ] ,[ 1 , pos ] ] ) )
 		}
+		
+		graphics.resetClip()
 		
 	}
 	
@@ -662,9 +671,9 @@ class gdipChart
 		translate   := frameRegion.translate
 		region      := frameRegion.region
 		if ( direction.1 = 0 )
-			return [ [ origin.1 * translate.3 + translate.1, region.2 + region.4 ], [ origin.1 * translate.3 + translate.1, region.2 ] ]
+			return [ [ pos := Round( origin.1 * translate.3 + translate.1 ), region.2 + region.4 ], [ pos, region.2 ] ]
 		else
-			return [ [ region.1, origin.2 * translate.4 + translate.2 ], [ region.1 + region.3, origin.2 * translate.4 + translate.2 ] ]
+			return [ [ region.1, pos := Round( origin.2 * translate.4 + translate.2 ) ], [ region.1 + region.3, pos ] ]
 	}
 	
 	flushToGUI()
