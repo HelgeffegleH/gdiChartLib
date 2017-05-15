@@ -199,7 +199,7 @@ class gdipChart
 		;Then combine them
 		sourceRect := This.getFieldRect()
 		;Get the position of the Field ( basically the part of the data the Chart is displaying )
-		translateRect    := [ 0, 0, targetFieldRect.3 / sourceRect.3, -targetFieldRect.4 / sourceRect.4 ]
+		translateRect    := [ 0, 0, ( targetFieldRect.3 ) / sourceRect.3, -( targetFieldRect.4 ) / sourceRect.4 ]
 		translateRect.1  := targetFieldRect.1 - sourceRect.1 * translateRect.3
 		translateRect.2  := targetFieldRect.2 - ( sourceRect.2 + sourceRect.4 ) * translateRect.4
 		
