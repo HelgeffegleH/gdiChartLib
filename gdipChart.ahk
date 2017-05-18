@@ -1,4 +1,4 @@
-﻿#Include classGDIp.ahk
+﻿#Include %A_LineFile%/../classGDIp.ahk
 
 /*
 A rewrite of Nighs gdiChart.ahk
@@ -178,17 +178,16 @@ class gdipChart
 	setFreezeRedraw( bFreeze )
 	{
 		bFreeze := !!bFreeze
-		if ( This.getFreeze() && !bFreeze && This.hasChanged )
-			This.freeze := bFreeze, This.touch
+		if ( This.getFreezeRedraw() && !bFreeze && This.hasChanged )
+			This.freeze := bFreeze, This.touch()
 		else
-			This.freeze
+			This.freeze := bFreeze
 	}
 	
 	getFreezeRedraw()
 	{
 		return This.freeze
 	}
-	
 	
 	updateFrameRegion()
 	{
@@ -212,23 +211,6 @@ class gdipChart
 	getFrameRegion()
 	{
 		return This.frameRegion
-	}
-	
-	draw()
-	{
-		if This.getVisible()
-		{
-			if This.hasChanged
-			{
-				This.hasChanged := 0
-				This.prepareBuffers()
-				This.drawBackGround()
-				This.drawGrid()
-				This.drawData()
-				This.drawAxes()
-			}
-			This.flushToGUI()
-		}
 	}
 	
 	addDataStream( data := "", color:="", name := "" )
@@ -528,6 +510,23 @@ class gdipChart
 	}
 	
 	
+	draw()
+	{
+		if This.getVisible()
+		{
+			if ( This.hasChanged && !This.getFreezeRedraw() )
+			{
+				This.hasChanged := 0
+				This.prepareBuffers()
+				This.drawBackGround()
+				This.drawGrid()
+				This.drawData()
+				This.drawAxes()
+			}
+			This.flushToGUI()
+		}
+	}
+	
 	prepareBuffers()
 	{
 		size := This.getControlRect()
@@ -580,7 +579,7 @@ class gdipChart
 			pos := offset.2 + fieldSize.2 * A_Index
 			graphics.drawLine( pen, This.getInfiniteLine( [ [ 0 , pos ] ,[ 1 , pos ] ] ) )
 		}
-		
+		pen.__Delete()
 		graphics.resetClip()
 		
 	}
@@ -616,6 +615,8 @@ class gdipChart
  				lastPoint := thispoint
 			}
 		}
+		pen.__Delete()
+		brush.__Delete()
 		graphics.resetClip()
 	}
 	
@@ -655,7 +656,6 @@ class gdipChart
 		yTarget := yAxis.1
 		graphics.drawLine( pen, [ [ yTarget.1 - 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		graphics.drawLine( pen, [ [ yTarget.1 + 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
-		
 		;Thanks to Nigh for these Awesome Arrows
 	}
 	
@@ -681,6 +681,7 @@ class gdipChart
 		targetDC := new GDI.DC( This.gethWND() )
 		graphics := targetDC.getGraphics()
 		graphics.drawBitmap( This.bitmap, This.getControlRect(), This.bitmap.getRect() )
+		targetDC.__Delete()
 	}
 	
 	flushToFile( fileName )
@@ -707,12 +708,12 @@ class gdipChart
 	unregisterRedraw()
 	{
 		hWND := This.getWindowhWND()
-		gdipChar.windows[ hWND ].Delete( &This )
-		if !gdipChar.windows[ hWND ]._NewEnum().Next( key, value )
-			gdipChar.windows.Delete( hWND )
-		else if !gdipChar.windows._NewEnum().Next( key, value )
+		gdipChart.windows[ hWND ].Delete( &This )
+		if !gdipChart.windows[ hWND ]._NewEnum().Next( key, value )
+			gdipChart.windows.Delete( hWND )
+		else if !gdipChart.windows._NewEnum().Next( key, value )
 		{
-			gdipChar.Delete( "windows" )
+			gdipChart.Delete( "windows" )
 			OnMessage( 0xF, gdipChart.WM_PAINT, 0 )
 			OnMessage( 0x214, gdipChart.WM_SIZEing, 0 )
 			OnMessage( 0x5, gdipChart.WM_SIZEing, 0 )

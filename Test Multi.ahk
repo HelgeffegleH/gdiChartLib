@@ -1,4 +1,4 @@
-﻿#Include gdipChart.ahk
+﻿#Include %A_LineFile%/../gdipChart.ahk
 
 SetBatchLines,-1
 

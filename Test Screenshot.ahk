@@ -1,4 +1,4 @@
-﻿#Include gdipChart.ahk
+﻿#Include %A_LineFile%/../gdipChart.ahk
 
 /*
 Original Example by Helgef - but it really does look beautiful

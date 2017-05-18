@@ -88,7 +88,9 @@ class GDIp
 		getGraphics()
 		{
 			if !( This.hasKey( "pGraphics" ) )
+			{
 				This.pGraphics := new GDIp.Graphics( This )
+			}
 			return This.pGraphics
 		}
 		
