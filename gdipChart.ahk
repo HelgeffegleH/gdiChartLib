@@ -171,7 +171,7 @@ class gdipChart
 	
 	sendRedraw()
 	{
-		SendMessage,0xF,0,0,,% "ahk_id " . This.getWindowHWND() 
+		PostMessage,0xF,0,0,,% "ahk_id " . This.getWindowHWND() 
 	}
 	
 	
@@ -560,23 +560,25 @@ class gdipChart
 		fieldsPerY   := ( region.4 / region.3 ) ** 0.5 * fieldsPerView 
 		
 		fieldSize    := [ fieldSize.1 * ( 2 ** Round( log2(  fieldRect.3 / fieldsPerX / fieldSize.1 ) ) ), fieldSize.2 * ( 2 ** Round( log2( fieldRect.4 / fieldsPerY / fieldSize.2  ) ) ) ]
-		offset       := [ fieldRect.1 - modulo( origin.1 + fieldRect.1, fieldSize.1 ) , fieldRect.2 - modulo( origin.2 + fieldRect.2, fieldSize.2 ) ]
-		
+		offset       := [ modulo( origin.1 - fieldRect.1, fieldSize.1 ),  modulo( origin.2 - fieldRect.2, fieldSize.2 ) ]
+		offset.1     += ( offset.1 < 0 ) ? fieldSize.1 : 0, offset.2 += ( offset.2 < 0 ) ? fieldSize.2 : 0
+		offset       := [ fieldRect.1 + offset.1, fieldRect.2 + offset.2  ]
 		
 		graphics     := This.bitmap.getGraphics()
 		pen          := new GDIp.Pen( grid.getColor(), 1 )
-		graphics.setClipRect( This.bitmap.getRegion() )
-		graphics.setClipRect( region, 3 )
+		;graphics.setClipRect( This.bitmap.getRegion() )
+		;graphics.setClipRect( region, 3 )
 		
-		Loop % ceil( fieldRect.3 / fieldSize.1 )
+		
+		Loop % floor( ( fieldRect.3 - offset.1 + fieldRect.1 ) / fieldSize.1 ) + 1
 		{
-			pos := offset.1 + fieldSize.1 * A_Index
+			pos := offset.1 + fieldSize.1 * ( A_Index - 1 )
 			graphics.drawLine( pen, This.getInfiniteLine( [ [ pos , 0 ] ,[ pos , 1 ] ] ) )
 		}
 		
-		Loop % ceil( fieldRect.4 / fieldSize.2 )
+		Loop % floor( ( fieldRect.4 - offset.2 + fieldRect.2 ) / fieldSize.2 ) + 1
 		{
-			pos := offset.2 + fieldSize.2 * A_Index
+			pos := offset.2 + fieldSize.2 * ( A_Index - 1 )
 			graphics.drawLine( pen, This.getInfiniteLine( [ [ 0 , pos ] ,[ 1 , pos ] ] ) )
 		}
 		pen.__Delete()

@@ -5,10 +5,10 @@ SetBatchLines,-1
 GUI,New
 GUI +hwndGUI1
 
-chart1 := new gdipChart( GUI1, "", [ 1, 0, 10, 255 ] )
+chart1 := new gdipChart( GUI1, "", [ 0, 0, 16, 256 ] )
 
 
-stream := chart1.addDataStream( createRandomData(), 0xFF00FF00 )
+stream := chart1.addDataStream( createRandomData( 0,  0, 1000, 256), 0xFF00FF00 )
 startT := A_TickCount
 
 stream.setVisible()
@@ -21,17 +21,23 @@ GUIClose:
 ExitApp
 
 scroll:
-chart1.setFieldRect( [ ( A_TickCount - startT ) / 500 + 1,0 ,10, 255 ] )
+chart1.setFieldRect( [ ( A_TickCount - startT ) / 150,0 ,16, 256 ] )
 return
 
-createRandomData( fields := 255 ,min := 0 ,max := 255 ,variance := 5 )
+createRandomData( x := 0, y := 0, w := 256, h := 256, variance := 5, steps := 1 )
 {
 	data := []
-	Random,y,% min,% max
-	Loop % fields
+	dSteps := 1 / steps
+	x *= dSteps
+	y *= dSteps
+	w *= dSteps
+	h *= dSteps
+	variance *= dSteps
+	Random,val,% y,% y + h
+	Loop % ( w-x )
 	{
-		Random,y,% ( y - variance < min ) ? min : y - variance  ,% ( y + variance > max ) ? max : y + variance
-		data.Push( [ A_Index, y ] )
+		Random,val,% ( val - variance < y ) ? y : val - variance  ,% ( val + variance > ( y + h ) ) ? ( y + h ) : val + variance
+		data[ A_Index ] := [ ( x + A_Index - 1 ) * steps, val * steps ]
 	}
 	return data
 }

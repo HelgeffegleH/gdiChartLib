@@ -6,7 +6,7 @@ GUI,New
 GUI +hwndGUI1
 chart1 := new gdipChart( GUI1, "", [ -127, -127, 255, 255 ] )
 
-stream := chart1.addDataStream( createRandomData( 335, -127, 127, 20, -167 ), 0xFF00FF00 )
+stream := chart1.addDataStream( createRandomData( -160, -160, 355, 355, 20, 10 ), 0xFF00FF00 )
 
 stream.setVisible()
 chart1.getAxes().setAttached( 1 ) 
@@ -27,14 +27,20 @@ GUIClose:
 ExitApp
 
 
-createRandomData( fields := 255 ,min := 0 ,max := 255 ,variance := 5, startField := 1 )
+createRandomData( x := 0, y := 0, w := 256, h := 256, variance := 5, steps := 1 )
 {
 	data := []
-	Random,y,% min,% max
-	Loop % fields
+	dSteps := 1 / steps
+	x *= dSteps
+	y *= dSteps
+	w *= dSteps
+	h *= dSteps
+	variance *= dSteps
+	Random,val,% y,% y + h
+	Loop % ( w-x )
 	{
-		Random,y,% ( y - variance < min ) ? min : y - variance  ,% ( y + variance > max ) ? max : y + variance
-		data[ A_Index - 1 ] := [ startField + A_Index, y ]
+		Random,val,% ( val - variance < y ) ? y : val - variance  ,% ( val + variance > ( y + h ) ) ? ( y + h ) : val + variance
+		data[ A_Index ] := [ ( x + A_Index - 1 ) * steps, val * steps ]
 	}
 	return data
 }

@@ -51,8 +51,7 @@ class dataField {
 		chart.setVisible()
 		Gui, % GUIHWND ": Show", w600 h400, % "data field preview"
 		; Screenshot, handle yourself.
-		;random,rnd,1
-		;chart.flushToFile( "Screenshot" rnd ".png" )
+		chart.flushToFile( "Screenshot2.png" )
 		WinWaitClose, % "ahk_id " GUIHWND
 		Gui % GUIHWND ": Destroy"
 	}
@@ -111,7 +110,7 @@ gosub, getColor
 Loop, % col.length()
 	df.Push(new dataField([-6,6],Func("pnSin").Bind(A_Index),200, "0xff" col[a_index])) ; "0xff" . fire[A_Index]
 dataField.preview([-6,-2,12,4],df*)
-return
+ExitApp
 getColor:
 ; Color credits; tidit: https://github.com/acorns/Particle-System/blob/master/GUI-Toy.ahk
 ;col:=["FF0000","F71507","F02B0F","E94116","E2571E","E96116","F06B0F","F77507","FF7F00","FFA900","FFD400","FFFF00","AAFF00","55FF00","00FF00","00AA55","0055AA","0000FF","2E00FF","5C00FF","8B00FF"]
