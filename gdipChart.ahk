@@ -1,8 +1,8 @@
 ﻿#Include %A_LineFile%/../classGDIp.ahk
 
 /*
-A rewrite of Nighs gdiChart.ahk
-Thanks for gdiCharts awesome code.
+	A rewrite of Nighs gdiChart.ahk
+	Thanks for gdiCharts awesome code.
 	
 */
 
@@ -16,6 +16,7 @@ class gdipChart
 		This.visibleData := []
 		This.axes        := new This.Axes( This )
 		This.grid        := new This.Grid( This )
+		This.label       := new This.Label( This )
 		This.sethWND( hWND )
 		if controlRect
 			This.setControlRect( controlRect )
@@ -145,20 +146,18 @@ class gdipChart
 		return This.margin
 	}
 	
-	
-	setNameVisibility( bVisible )
+	setFreezeRedraw( bFreeze )
 	{
-		bVisible := !!bVisible
-		if ( bVisible ^ This.nameVisible )
-		{
-			This.nameVisible := bVisible
-			This.touch()
-		}
+		bFreeze := !!bFreeze
+		if ( This.getFreezeRedraw() && !bFreeze && This.hasChanged )
+			This.freeze := bFreeze, This.touch()
+		else
+			This.freeze := bFreeze
 	}
 	
-	getNameVisibility()
+	getFreezeRedraw()
 	{
-		return This.hasKey( "nameVisible" ) && This.nameVisible
+		return This.freeze
 	}
 	
 	
@@ -174,44 +173,6 @@ class gdipChart
 		PostMessage,0xF,0,0,,% "ahk_id " . This.getWindowHWND() 
 	}
 	
-	
-	setFreezeRedraw( bFreeze )
-	{
-		bFreeze := !!bFreeze
-		if ( This.getFreezeRedraw() && !bFreeze && This.hasChanged )
-			This.freeze := bFreeze, This.touch()
-		else
-			This.freeze := bFreeze
-	}
-	
-	getFreezeRedraw()
-	{
-		return This.freeze
-	}
-	
-	updateFrameRegion()
-	{
-		targetRect := This.getControlRect()
-		marginRect := This.getMargin()
-		;Get Margin and the position on the GUI
-		targetFieldRect := [ targetRect.1 + marginRect.1, targetRect.2 + marginRect.2, targetRect.3 - marginRect.1 - marginRect.3, targetRect.4 - marginRect.2 - marginRect.4 ]
-		;Then combine them
-		sourceRect := This.getFieldRect()
-		;Get the position of the Field ( basically the part of the data the Chart is displaying )
-		translateRect    := [ 0, 0, ( targetFieldRect.3 ) / sourceRect.3, -( targetFieldRect.4 ) / sourceRect.4 ]
-		translateRect.1  := targetFieldRect.1 - sourceRect.1 * translateRect.3
-		translateRect.2  := targetFieldRect.2 - ( sourceRect.2 + sourceRect.4 ) * translateRect.4
-		
-		translateRectFixed   := translateRect.Clone()
-		translateRectFixed.1 := targetFieldRect.1
-		translateRectFixed.2 := targetFieldRect.2 - sourceRect.4 * translateRect.4
-		This.frameRegion := { translate: translateRect, region: targetFieldRect, translateFixed: translateRectFixed }
-	}
-	
-	getFrameRegion()
-	{
-		return This.frameRegion
-	}
 	
 	addDataStream( data := "", color:="", name := "" )
 	{
@@ -428,7 +389,6 @@ class gdipChart
 			This.setFieldsPerView( 10 )
 			This.setColor( 0xFFA0A0A0 )
 			This.setVisible()
-			
 		}
 		
 		setVisible( bVisible := true )
@@ -509,6 +469,241 @@ class gdipChart
 		
 	}
 	
+	getLabel()
+	{
+		return This.label
+	}
+	
+	class Label
+	{
+		
+		__New( parent )
+		{
+			This.parent := new indirectReference( parent )
+			This.setVisible( 0 )
+			This.setFieldsPerLabel( 2 )
+			This.setColor( 0xFF000000 )
+			This.setFamily( "Arial" )
+			This.setSize( 12 )
+			This.setMargin( [ 3, 3, 3, 3 ] )
+			This.setVisible()
+		}
+		
+		setVisible( bVisible := true )
+		{
+			bVisible := !!bVisible 
+			if ( This.getVisible() ^ bVisible )
+			{
+				This.visible := bVisible
+				This.parent.touch()
+			}
+		}
+		
+		getVisible()
+		{
+			return This.hasKey( "visible" ) && This.visible
+		}
+		
+		setFieldsPerLabel( fieldsPerLabel )
+		{
+			This.fieldsPerLabel := fieldsPerLabel
+			This.touch()
+		}
+		
+		getFieldsPerLabel()
+		{
+			return This.fieldsPerLabel
+		}
+		
+		setColor( color )
+		{
+			if ( color != This.color )
+			{
+				This.color := color
+				This.touch()
+			}
+		}
+		
+		getColor()
+		{
+			return This.color
+		}
+		
+		setFamily( family )
+		{
+			if ( family != This.family )
+			{
+				This.family := family
+				This.touch()
+			}
+		}
+		
+		getFamily()
+		{
+			return This.family
+		}
+		
+		setSize( size )
+		{
+			if ( size != This.size )
+			{
+				This.size := size
+				This.touch()
+			}
+		}
+		
+		getSize()
+		{
+			return This.size
+		}
+		
+		setMargin( margin )
+		{
+			This.margin := margin
+			This.touch()
+		}
+		
+		getMargin()
+		{
+			return This.margin
+		}
+		
+	}
+	
+	updateFrameRegion()
+	{
+		targetRect := This.getControlRect()
+		marginRect := This.getMargin()
+		;Get Margin and the position on the GUI
+		frameRegion     := []
+		modeOn          := {}
+		targetFieldRect := [ targetRect.1 + marginRect.1, targetRect.2 + marginRect.2, targetRect.3 - marginRect.1 - marginRect.3 , targetRect.4 - marginRect.2 - marginRect.4 ]
+		;Then combine them
+		sourceRect := This.getFieldRect()
+		;Get the position of the Field ( basically the part of the data the Chart is displaying )
+		
+		translateRectOn    := [ 0, 0, ( targetFieldRect.3 - 1 ) / sourceRect.3, -( targetFieldRect.4 - 1 ) / sourceRect.4 ]
+		translateRectOn.1  := targetFieldRect.1 - sourceRect.1 * translateRectOn.3
+		translateRectOn.2  := targetFieldRect.2 - ( sourceRect.2 + sourceRect.4 ) * translateRectOn.4
+		translateRectRelative   := translateRectOn.Clone()
+		translateRectRelative.1 := targetFieldRect.1
+		translateRectRelative.2 := targetFieldRect.2 - sourceRect.4 * translateRectRelative.4
+		translateRectAbsolute    := [ 0, 0, targetFieldRect.3 - 1 , -( targetFieldRect.4 - 1 ) ]
+		translateRectAbsolute.1  := targetFieldRect.1
+		translateRectAbsolute.2  := targetFieldRect.2 - translateRect.4
+		This.frameRegion := { 0: translateRectOn, 1: translateRectRelative, 2: translateRectAbsolute, region: targetFieldRect }
+	}
+	
+	
+	getFrameRegion()
+	{
+		return This.frameRegion
+	}
+	
+	/*
+		point:	the point.
+		
+		mode:	The mode of the field that's the source ( 0|1|2 )
+		0:On: The point is on the field, 1:relative: same as on but doesn't move with the field, 2:absolute: [ 0, 0 ] is the left lower point of the field [ 1, 1 ] is the right upper
+		
+		clamp:	Defines the behaviour of the function if the point is outside the field ( 0|1|2 )
+		0:error: returns null 1:clamp: clamps the point inside 2:ignore: doesn't check if it's inside the field
+		
+		round:	Will round the result
+		
+	*/
+	
+	getPointFieldToPixel( point, mode := 0, clamp := 0, round := 0 )
+	{
+		frameRegion := This.getFrameRegion()
+		region      := frameRegion.region
+		translate   := frameRegion[ mode ]
+		fPoint := [ point.1 * translate.3 + translate.1, point.2 * translate.4 + translate.2 ]
+		if ( clamp = 1 )
+		{
+			if ( fPoint.1 < region.1 )
+				fPoint.1 := region.1
+			else if ( fPoint.1 > region.1 + region.3 )
+				fPoint.1 := region.1 + region.3
+			if ( fPoint.2 < region.2 )
+				fPoint.2 := region.2
+			else if ( fPoint.2 > region.2 + region.4 )
+				fPoint := region.2 + region.4
+		}
+		else if ( !clamp )
+			if ( ( fPoint.1 < region.1 ) || ( fPoint.2 < region.2 ) || ( fPoint.1 > region.1 + region.3 ) || ( fPoint.2 > region.2 + region.4 ) )
+				return
+		if ( round )
+			for each, value in fPoint
+				fPoint[ each ] := Round( value )
+		return fPoint
+	}
+	
+	getLineFieldToPixel( inLine,  mode := 0,  clamp := 0,  round := 0 )
+	{
+		outLine := []
+		for each, point in inLine
+			outLine[ each ] := This.getPointFieldToPixel( point,  mode, clamp, round )
+		return outLine
+	}
+	
+	getPointPixelToField( fpoint, mode := 0, clamp := 0, round := 0 )
+	{
+		frameRegion := This.getFrameRegion()
+		region      := frameRegion.region
+		translate   := frameRegion[ mode ]
+		if ( clamp = 1 )
+		{
+			if ( fPoint.1 < region.1 )
+				fPoint.1 := region.1
+			else if ( fPoint.1 > region.1 + region.3 )
+				fPoint.1 := region.1 + region.3
+			if ( fPoint.2 < region.2 )
+				fPoint.2 := region.2
+			else if ( fPoint.2 > region.2 + region.4 )
+				fPoint := region.2 + region.4
+		}
+		else if ( !clamp )
+			if ( ( fPoint.1 < region.1 ) || ( fPoint.2 < region.2 ) || ( fPoint.1 > region.1 + region.3 ) || ( fPoint.2 > region.2 + region.4 ) )
+				return
+		point := [ ( fPoint.1 - translate.1 ) / translate.3, ( fPoint.2 - translate.2 ) / translate.4 ]
+		if ( round )
+			for each, value in point
+				point[ each ] := Round( value )
+		return point
+	}
+	
+	updateGridScale()
+	{
+		grid         := This.getGrid()
+		fieldSize    := grid.getFieldSize()
+		fieldsPerView:= grid.getFieldsPerView()
+		origin       := grid.getOrigin()
+		
+		fieldRect    := This.getFieldRect()
+		region       := This.getFrameRegion().region
+		
+		fieldsPerX   := ( region.3 / region.4 ) ** 0.5 * fieldsPerView 
+		fieldsPerY   := ( region.4 / region.3 ) ** 0.5 * fieldsPerView 
+		
+		fieldSize    := [ fieldSize.1 * ( 2 ** Round( log2(  fieldRect.3 / fieldsPerX / fieldSize.1 ) ) ), fieldSize.2 * ( 2 ** Round( log2( fieldRect.4 / fieldsPerY / fieldSize.2  ) ) ) ]
+		offset       := [ modulo( origin.1 - fieldRect.1, fieldSize.1 ),  modulo( origin.2 - fieldRect.2, fieldSize.2 ) ]
+		offset.1     += ( offset.1 < 0 ) ? fieldSize.1 : 0, offset.2 += ( offset.2 < 0 ) ? fieldSize.2 : 0
+		offset       := [ fieldRect.1 + offset.1, fieldRect.2 + offset.2  ]
+		
+		This.gridLines := { x:[], y:[] }
+		
+		Loop % floor( ( fieldRect.3 - offset.1 + fieldRect.1 ) / fieldSize.1 ) + 1
+			This.gridLines.x.Push( [ [ pos := offset.1 + fieldSize.1 * ( A_Index - 1 ) , fieldRect.2 ] ,[ pos , fieldRect.2 + fieldRect.4 ] ] )
+		
+		Loop % floor( ( fieldRect.4 - offset.2 + fieldRect.2 ) / fieldSize.2 ) + 1
+			This.gridLines.y.Push( [ [ fieldRect.1 , pos := offset.2 + fieldSize.2 * ( A_Index - 1 ) ] ,[ fieldRect.1 + fieldRect.3 , pos ] ] )
+	}
+	
+	getGridLines()
+	{
+		return This.gridLines
+	}
 	
 	draw()
 	{
@@ -535,6 +730,7 @@ class gdipChart
 		This.bitmap.getGraphics().setInterpolationMode( 7 )
 		This.bitmap.getGraphics().setSmoothingMode( 4 )
 		This.updateFrameRegion()
+		This.updateGridScale()
 	}
 	
 	drawBackGround()
@@ -544,46 +740,17 @@ class gdipChart
 	
 	drawGrid()
 	{
-		grid         := This.getGrid()
-		
-		if !( grid.getVisible() )	
+		grid := This.getGrid()
+		if !( grid.getVisible() )
 			return
 		
-		fieldSize    := grid.getFieldSize()
-		fieldsPerView:= grid.getFieldsPerView()
-		origin       := grid.getOrigin()
+		graphics := This.bitmap.getGraphics()
+		pen      := new GDIp.Pen( grid.getColor(), 1 )
 		
-		fieldRect    := This.getFieldRect()
-		region       := This.getFrameRegion().region
-		
-		fieldsPerX   := ( region.3 / region.4 ) ** 0.5 * fieldsPerView 
-		fieldsPerY   := ( region.4 / region.3 ) ** 0.5 * fieldsPerView 
-		
-		fieldSize    := [ fieldSize.1 * ( 2 ** Round( log2(  fieldRect.3 / fieldsPerX / fieldSize.1 ) ) ), fieldSize.2 * ( 2 ** Round( log2( fieldRect.4 / fieldsPerY / fieldSize.2  ) ) ) ]
-		offset       := [ modulo( origin.1 - fieldRect.1, fieldSize.1 ),  modulo( origin.2 - fieldRect.2, fieldSize.2 ) ]
-		offset.1     += ( offset.1 < 0 ) ? fieldSize.1 : 0, offset.2 += ( offset.2 < 0 ) ? fieldSize.2 : 0
-		offset       := [ fieldRect.1 + offset.1, fieldRect.2 + offset.2  ]
-		
-		graphics     := This.bitmap.getGraphics()
-		pen          := new GDIp.Pen( grid.getColor(), 1 )
-		;graphics.setClipRect( This.bitmap.getRegion() )
-		;graphics.setClipRect( region, 3 )
-		
-		
-		Loop % floor( ( fieldRect.3 - offset.1 + fieldRect.1 ) / fieldSize.1 ) + 1
-		{
-			pos := offset.1 + fieldSize.1 * ( A_Index - 1 )
-			graphics.drawLine( pen, This.getInfiniteLine( [ [ pos , 0 ] ,[ pos , 1 ] ] ) )
-		}
-		
-		Loop % floor( ( fieldRect.4 - offset.2 + fieldRect.2 ) / fieldSize.2 ) + 1
-		{
-			pos := offset.2 + fieldSize.2 * ( A_Index - 1 )
-			graphics.drawLine( pen, This.getInfiniteLine( [ [ 0 , pos ] ,[ 1 , pos ] ] ) )
-		}
-		pen.__Delete()
-		graphics.resetClip()
-		
+		For each, line in ( This.getGridLines().x )
+			graphics.drawLine( pen , This.getLineFieldToPixel( line, 0, 2, 1 ) )
+		For each, line in ( This.getGridLines().y )
+			graphics.drawLine( pen , This.getLineFieldToPixel( line, 0, 2, 1 ) )
 	}
 	
 	drawData()
@@ -591,9 +758,7 @@ class gdipChart
 		graphics     := This.bitmap.getGraphics()
 		pen          := new GDIp.Pen( 0xFF000000, 1 )
 		brush        := new Gdip.SolidBrush( 0xFF000000 )
-		frameRegion  := This.getFrameRegion()
-		translate    := frameRegion.translate
-		fieldRect    := frameRegion.region
+		fieldRect    := This.getFrameRegion().region
 		graphics.setClipRect( This.bitmap.getRegion() )
 		graphics.setClipRect( fieldRect, 3 )
 		For each, visibleDataStream in This.visibleData
@@ -606,7 +771,7 @@ class gdipChart
 			lastPointDrawn := ""
 			For each, point in data
 			{
-				thisPoint := [ point.1 * translate.3 + translate.1, point.2 * translate.4 + translate.2 ]
+				thisPoint := This.getPointFieldToPixel( point, 0, 2, 0 )
  				if ( isObject( lastpoint ) && ( thispoint.1 >= fieldRect.1 ) && ( thispoint.1 <= fieldRect.1 + fieldRect.3 ) )
 					graphics.drawLine( pen, [ lastpoint, thispoint ] ), lastPointDrawn := 1
 				else if ( lastPointDrawn )
@@ -617,8 +782,6 @@ class gdipChart
  				lastPoint := thispoint
 			}
 		}
-		pen.__Delete()
-		brush.__Delete()
 		graphics.resetClip()
 	}
 	
@@ -628,28 +791,18 @@ class gdipChart
 		if !axes.getVisible()
 			return
 		graphics  := This.bitmap.getGraphics()
-		pen       := new GDIp.pen( axes.getColor(), 2 )
-		frameRegion := This.getFrameRegion()
+		pen       := new GDIp.pen( axes.getColor(), penWidth := 2 )
+		region := This.getFrameRegion().region
 		
 		
-		axesOrigin      := axes.getOrigin()
-		translate       := axes.getAttached() ? frameRegion.translate : frameRegion.translateFixed
-		axesPixelOrigin := [ axesOrigin.1 * translate.3 + translate.1, axesOrigin.2 * translate.4 + translate.2 ]
+		axesPixelOrigin := This.getPointFieldToPixel( axes.getOrigin(), !axes.getAttached(), 1, 1 )
 		
-		if ( axesPixelOrigin.1 < frameRegion.region.1 )
-			axesDisplace := 1, axesPixelOrigin.1 := frameRegion.region.1
-		else if ( axesPixelOrigin.1 > frameRegion.region.1 + frameRegion.region.3 )
-			axesDisplace := 3, axesPixelOrigin.1 := frameRegion.region.1 + frameRegion.region.3
-		if ( axesPixelOrigin.2 < frameRegion.region.2 )
-			axesDisplace := axesDisplace | 4, axesPixelOrigin.2 := frameRegion.region.2
-		else if ( axesPixelOrigin.2 > frameRegion.region.2 + frameRegion.region.4 )
-			axesDisplace := axesDisplace | 8, axesPixelOrigin.2 := frameRegion.region.2 + frameRegion.region.4
 		
-		xAxis   := [ [ frameRegion.region.1, axesPixelOrigin.2 ], [ frameRegion.region.1 + frameRegion.region.3, axesPixelOrigin.2 ] ]
-		yAxis   := [ [ axesPixelOrigin.1, frameRegion.region.2 ], [ axesPixelOrigin.1, frameRegion.region.2 + frameRegion.region.4 ] ]
+		xAxis   := [ [ region.1 + region.3, axesPixelOrigin.2 ], [ region.1, axesPixelOrigin.2 ] ]
+		yAxis   := [ [ axesPixelOrigin.1, region.2 ], [ axesPixelOrigin.1, region.2 + region.4 ] ]
 		
 		graphics.drawLine( pen, xAxis )
-		xTarget := xAxis.2
+		xTarget := xAxis.1
 		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 - 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
 		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 + 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
 		;Arrows
@@ -659,23 +812,51 @@ class gdipChart
 		graphics.drawLine( pen, [ [ yTarget.1 - 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		graphics.drawLine( pen, [ [ yTarget.1 + 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		;Thanks to Nigh for these Awesome Arrows
-	}
-	
-	/*
-		points: an array of 2 [ x, y ] points that define origin and direction of the InfiniteLine
-	*/
-	
-	getInfiniteLine( points )
-	{
-		origin      := [ points.1.1, points.1.2 ]
-		direction   := [ points.2.1 - points.1.1, points.2.2 - points.1.2 ]
-		frameRegion := This.getFrameRegion()
-		translate   := frameRegion.translate
-		region      := frameRegion.region
-		if ( direction.1 = 0 )
-			return [ [ pos := Round( origin.1 * translate.3 + translate.1 ), region.2 + region.4 ], [ pos, region.2 ] ]
-		else
-			return [ [ region.1, pos := Round( origin.2 * translate.4 + translate.2 ) ], [ region.1 + region.3, pos ] ]
+		
+		;drawLabels() ;is here until I can create updateGeometry()
+		label             := This.getLabel()
+		margin            := label.getMargin()
+		labelFamily       := new GDIp.FontFamily( label.getFamily() )
+		labelFont         := new GDIp.Font( labelFamily, label.getSize() )
+		labelStringFormat := new GDIp.StringFormat()
+		labelBrush        := new GDIp.SolidBrush( label.getColor() )
+		
+		xGridEnum := This.getGridLines().x._NewEnum()
+		Loop
+		{
+			if !xGridEnum.Next( index, pos )
+				break
+			tPoint    := This.getPointFieldToPixel( [ xPos := pos.1.1, 0 ], 0, 2, 1 )
+			tPoint.2  := axesPixelOrigin.2
+			str       := Format( "{:.2f}", xPos )
+			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
+			strRect.rect.1 := tPoint.1 - strRect.rect.3/2
+			strRect.rect.2 := tPoint.2 + penWidth/2 + margin.2
+			graphics.drawString( str, labelFont, strRect.rect, labelStringFormat, labelBrush )
+			while ( A_Index < label.getFieldsPerLabel() )
+			{	
+				if !xGridEnum.Next( index, pos )
+					break, 2
+			}
+		}
+		yGridEnum := This.getGridLines().y._NewEnum()
+		Loop
+		{
+			if !yGridEnum.Next( index, pos )
+				break
+			tPoint    := This.getPointFieldToPixel( [ 0, yPos := pos.2.2 ], 0, 2, 1 )
+			tPoint.1  := axesPixelOrigin.1
+			str       := Format( "{:.2f}", yPos )
+			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
+			strRect.rect.1 := tPoint.1 - penWidth/2 - margin.3 - strRect.rect.3
+			strRect.rect.2 := tPoint.2 - strRect.rect.4/2
+			graphics.drawString( str, labelFont, strRect.rect, labelStringFormat, labelBrush )
+			while ( A_Index < label.getFieldsPerLabel() )
+			{	
+				if !yGridEnum.Next( index, pos )
+					break, 2
+			}
+		}
 	}
 	
 	flushToGUI()
