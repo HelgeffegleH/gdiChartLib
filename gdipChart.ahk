@@ -675,10 +675,10 @@ class gdipChart
 		return point
 	}
 	
-	clampPointToRect( point, rectNr )
+	clampPointToRect( point, rectNr := 0 )
 	{
 		point := point.clone()
-		rect := { 0:fieldRect := This.getFieldRect(), 1:[ 0, 0, fieldRect.3, fieldRect.4 ], 2:[ 0, 0, 0, 0 ] }[ rectNr ]
+		rect := { 0:fieldRect := This.getFieldRect(), 1:[ 0, 0, fieldRect.3, fieldRect.4 ], 2:[ 0, 0, 1, 1 ] }[ rectNr ]
 		if ( point.1 < rect.1 )
 			point.1 := rect.1
 		else if ( point.1 > rect.1 + rect.3 )
@@ -688,6 +688,13 @@ class gdipChart
 		else if ( point.2 > rect.2 + rect.4 )
 			point := rect.2 + rect.4
 		return point
+	}
+	
+	getFieldPointToRect( point, SourceRectNr := 1, TargetRectNr := 0 )
+	{
+		transSource := This.getFrameRegion()[ SourceRectNr ]
+		transTarget := This.getFrameRegion()[ TargetRectNr ]
+		return [ ( ( point.1 * transSource.3 + transSource.1 ) - transTarget.1 ) / transTarget.3 , ( ( point.2 * transSource.4 + transSource.2 ) - transTarget.2 ) / transTarget.4 ]
 	}
 	
 	updateGeometry()
@@ -717,8 +724,11 @@ class gdipChart
 		Loop % floor( ( fieldRect.4 - offset.2 + fieldRect.2 ) / fieldSize.2 ) + 1
 			This.geometry.grid.lines.2.Push( [ [ fieldRect.1 , pos := offset.2 + fieldSize.2 * ( A_Index - 1 ) ] ,[ fieldRect.1 + fieldRect.3 , pos ] ] )
 		
-		axes := This.getAxes()
-		origin := This.clampPointToRect( axes.getOrigin(), !axes.getAttached() )
+		axes   := This.getAxes()
+		origin := axes.getOrigin()
+		if ( !axes.getAttached() )
+			origin := This.getFieldPointToRect( origin )
+		origin := This.clampPointToRect( origin )
 		This.geometry.axes := { lines:[ [ [ fieldRect.1 , origin.2 ], [ fieldRect.1 + fieldRect.3 , origin.2 ] ], [ [ origin.1, fieldRect.2 ], [ origin.1, fieldRect.2 + fieldRect.4 ] ] ], origin: origin }
 		
 	}
@@ -822,8 +832,8 @@ class gdipChart
 		pen       := new GDIp.pen( axes.getColor(), penWidth := 2 )
 		
 		
-		xAxis   := This.getLineFieldToPixel( This.getAxesLines().1, !axes.getAttached(), 2, 1 )
-		yAxis   := This.getLineFieldToPixel( This.getAxesLines().2, !axes.getAttached(), 2, 1 )
+		xAxis   := This.getLineFieldToPixel( This.getAxesLines().1, 0, 2, 1 )
+		yAxis   := This.getLineFieldToPixel( This.getAxesLines().2, 0, 2, 1 )
 		
 		graphics.drawLine( pen, xAxis )
 		xTarget := xAxis.2
@@ -858,7 +868,7 @@ class gdipChart
 		{
 			if ( mod( Round( pos.1.1 / grid.size.1 ), label.getFieldsPerLabel() ) )
 				continue
-			tPoint    := [ This.getPointFieldToPixel( [ xPos := pos.1.1, 0 ], 0, 2, 1 ).1, This.getPointFieldToPixel( [ 0, axesOrigin.2 ], !This.getAxes().getAttached(), 2, 1 ).2 ]
+			tPoint    := This.getPointFieldToPixel( [ xPos := pos.1.1, axesOrigin.2 ], 0, 2, 1 )
 			str       := fitNr( xPos, 3 )
 			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
 			strRect.rect.1 := tPoint.1 - strRect.rect.3/2
@@ -869,7 +879,7 @@ class gdipChart
 		{
 			if ( mod( Round( pos.2.2 / grid.size.2 ), label.getFieldsPerLabel() ) )
 				continue
-			tPoint    := [ This.getPointFieldToPixel( [ axesOrigin.1, 0 ], !This.getAxes().getAttached(), 2, 1 ).1, This.getPointFieldToPixel( [ 0, yPos := pos.2.2 ], 0, 2, 1 ).2 ]
+			tPoint    := This.getPointFieldToPixel( [ axesOrigin.1, yPos := pos.2.2 ], 0, 2, 1 )
 			str       := fitNr( yPos, 3 )
 			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
 			strRect.rect.1 := tPoint.1 - 2 - margin.3 - strRect.rect.3

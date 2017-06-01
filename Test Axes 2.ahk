@@ -5,9 +5,9 @@ CoordMode,Mouse,Client
 
 GUI,New
 GUI +hwndGUI1
-chart1 := new gdipChart( GUI1, "", [ 0, 0, 256, 256 ] )
-stream := chart1.addDataStream( createRandomData(), 0xFF00FF00 )
-chart1.setAttached( 0 )
+chart1 := new gdipChart( GUI1, "", [ -128, -128, 256, 256 ] )
+stream := chart1.addDataStream( createRandomData( -128, -128 ), 0xFF00FF00 )
+chart1.getAxes().setAttached( 0 )
 
 stream.setVisible()
 chart1.setVisible()
