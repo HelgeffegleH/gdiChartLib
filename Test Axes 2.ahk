@@ -6,8 +6,8 @@ CoordMode,Mouse,Client
 GUI,New
 GUI +hwndGUI1
 chart1 := new gdipChart( GUI1, "", [ 0, 0, 256, 256 ] )
-
 stream := chart1.addDataStream( createRandomData(), 0xFF00FF00 )
+chart1.setAttached( 0 )
 
 stream.setVisible()
 chart1.setVisible()
@@ -19,14 +19,11 @@ return
 
 Move:
 MouseGetPos, x, y, hWND
-frameRegion := chart1.getFrameRegion()
-if ( hWND + 0 = GUI1 + 0 && x > frameRegion.region.1 && x < frameRegion.region.1 + frameRegion.region.3 && y > frameRegion.region.2 && y < frameRegion.region.2 + frameRegion.region.4 ) 
+if ( hWND + 0 = GUI1 + 0 && isObject( origin := chart1.getPointPixelToField( [ x, y ], 1, 0, 0 ) ) ) 
 {
-	;When the mouse is 
-	trans := frameRegion.translateFixed
 	chart1.setFreezeRedraw( 1 )
 	chart1.getAxes().setVisible()
-	chart1.getAxes().setOrigin( [ ( x - trans.1 ) / trans.3 , ( y - trans.2 ) / trans.4  ] )
+	chart1.getAxes().setOrigin( origin )
 	chart1.setFreezeRedraw( 0 )
 }
 else

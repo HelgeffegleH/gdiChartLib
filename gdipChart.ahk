@@ -302,6 +302,7 @@ class gdipChart
 			This.setColor( 0xFF000000 )
 			This.setOrigin( [ 0, 0 ] )
 			This.parent := new indirectReference( parent )
+			This.setAttached( 1 )
 			This.setVisible()
 		}
 		
@@ -649,6 +650,7 @@ class gdipChart
 	
 	getPointPixelToField( fpoint, mode := 0, clamp := 0, round := 0 )
 	{
+		fpoint      := fpoint.clone()
 		frameRegion := This.getFrameRegion()
 		region      := frameRegion.region
 		translate   := frameRegion[ mode ]
@@ -673,8 +675,24 @@ class gdipChart
 		return point
 	}
 	
-	updateGridScale()
+	clampPointToRect( point, rectNr )
 	{
+		point := point.clone()
+		rect := { 0:fieldRect := This.getFieldRect(), 1:[ 0, 0, fieldRect.3, fieldRect.4 ], 2:[ 0, 0, 0, 0 ] }[ rectNr ]
+		if ( point.1 < rect.1 )
+			point.1 := rect.1
+		else if ( point.1 > rect.1 + rect.3 )
+			point.1 := rect.1 + rect.3
+		if ( point.2 < rect.2 )
+			point.2 := rect.2
+		else if ( point.2 > rect.2 + rect.4 )
+			point := rect.2 + rect.4
+		return point
+	}
+	
+	updateGeometry()
+	{
+		This.geometry := {}
 		grid         := This.getGrid()
 		fieldSize    := grid.getFieldSize()
 		fieldsPerView:= grid.getFieldsPerView()
@@ -691,18 +709,28 @@ class gdipChart
 		offset.1     += ( offset.1 < 0 ) ? fieldSize.1 : 0, offset.2 += ( offset.2 < 0 ) ? fieldSize.2 : 0
 		offset       := [ fieldRect.1 + offset.1, fieldRect.2 + offset.2  ]
 		
-		This.gridLines := { x:[], y:[] }
+		This.geometry.grid := { lines:[[], []], size:fieldSize }
 		
 		Loop % floor( ( fieldRect.3 - offset.1 + fieldRect.1 ) / fieldSize.1 ) + 1
-			This.gridLines.x.Push( [ [ pos := offset.1 + fieldSize.1 * ( A_Index - 1 ) , fieldRect.2 ] ,[ pos , fieldRect.2 + fieldRect.4 ] ] )
+			This.geometry.grid.lines.1.Push( [ [ pos := offset.1 + fieldSize.1 * ( A_Index - 1 ) , fieldRect.2 ] ,[ pos , fieldRect.2 + fieldRect.4 ] ] )
 		
 		Loop % floor( ( fieldRect.4 - offset.2 + fieldRect.2 ) / fieldSize.2 ) + 1
-			This.gridLines.y.Push( [ [ fieldRect.1 , pos := offset.2 + fieldSize.2 * ( A_Index - 1 ) ] ,[ fieldRect.1 + fieldRect.3 , pos ] ] )
+			This.geometry.grid.lines.2.Push( [ [ fieldRect.1 , pos := offset.2 + fieldSize.2 * ( A_Index - 1 ) ] ,[ fieldRect.1 + fieldRect.3 , pos ] ] )
+		
+		axes := This.getAxes()
+		origin := This.clampPointToRect( axes.getOrigin(), !axes.getAttached() )
+		This.geometry.axes := { lines:[ [ [ fieldRect.1 , origin.2 ], [ fieldRect.1 + fieldRect.3 , origin.2 ] ], [ [ origin.1, fieldRect.2 ], [ origin.1, fieldRect.2 + fieldRect.4 ] ] ], origin: origin }
+		
 	}
 	
 	getGridLines()
 	{
-		return This.gridLines
+		return This.geometry.grid.lines
+	}
+	
+	getAxesLines()
+	{
+		return This.geometry.axes.lines
 	}
 	
 	draw()
@@ -717,6 +745,7 @@ class gdipChart
 				This.drawGrid()
 				This.drawData()
 				This.drawAxes()
+				This.drawLabels()
 			}
 			This.flushToGUI()
 		}
@@ -729,8 +758,9 @@ class gdipChart
 		This.bitmap := new GDIp.Bitmap( size )
 		This.bitmap.getGraphics().setInterpolationMode( 7 )
 		This.bitmap.getGraphics().setSmoothingMode( 4 )
+		This.bitmap.getGraphics().setTextRenderingHint( 4 )
 		This.updateFrameRegion()
-		This.updateGridScale()
+		This.updateGeometry()
 	}
 	
 	drawBackGround()
@@ -746,11 +776,9 @@ class gdipChart
 		
 		graphics := This.bitmap.getGraphics()
 		pen      := new GDIp.Pen( grid.getColor(), 1 )
-		
-		For each, line in ( This.getGridLines().x )
-			graphics.drawLine( pen , This.getLineFieldToPixel( line, 0, 2, 1 ) )
-		For each, line in ( This.getGridLines().y )
-			graphics.drawLine( pen , This.getLineFieldToPixel( line, 0, 2, 1 ) )
+		For each,  lines in This.getGridLines()
+			For each, line in lines
+				graphics.drawLine( pen , This.getLineFieldToPixel( line, 0, 2, 1 ) )
 	}
 	
 	drawData()
@@ -792,70 +820,63 @@ class gdipChart
 			return
 		graphics  := This.bitmap.getGraphics()
 		pen       := new GDIp.pen( axes.getColor(), penWidth := 2 )
-		region := This.getFrameRegion().region
 		
 		
-		axesPixelOrigin := This.getPointFieldToPixel( axes.getOrigin(), !axes.getAttached(), 1, 1 )
-		
-		
-		xAxis   := [ [ region.1 + region.3, axesPixelOrigin.2 ], [ region.1, axesPixelOrigin.2 ] ]
-		yAxis   := [ [ axesPixelOrigin.1, region.2 ], [ axesPixelOrigin.1, region.2 + region.4 ] ]
+		xAxis   := This.getLineFieldToPixel( This.getAxesLines().1, !axes.getAttached(), 2, 1 )
+		yAxis   := This.getLineFieldToPixel( This.getAxesLines().2, !axes.getAttached(), 2, 1 )
 		
 		graphics.drawLine( pen, xAxis )
-		xTarget := xAxis.1
+		xTarget := xAxis.2
 		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 - 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
 		graphics.drawLine( pen, [ [ xTarget.1 - 15, xTarget.2 + 2 ], [ xTarget.1 - 5, xTarget.2 ] ] )
 		;Arrows
 		
 		graphics.drawLine( pen, yAxis )
-		yTarget := yAxis.1
+		yTarget := yAxis.2
 		graphics.drawLine( pen, [ [ yTarget.1 - 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		graphics.drawLine( pen, [ [ yTarget.1 + 2, yTarget.2 + 15 ], [ yTarget.1, yTarget.2 + 5 ] ] )
 		;Thanks to Nigh for these Awesome Arrows
-		
-		;drawLabels() ;is here until I can create updateGeometry()
+	}
+	
+	drawLabels()
+	{
 		label             := This.getLabel()
+		if ( label.getVisible() && This.getAxes().getVisible() )
+		
+		graphics  := This.bitmap.getGraphics()
+		
+		axesOrigin:= This.geometry.axes.origin
+		grid      := This.geometry.grid
+		
 		margin            := label.getMargin()
 		labelFamily       := new GDIp.FontFamily( label.getFamily() )
 		labelFont         := new GDIp.Font( labelFamily, label.getSize() )
 		labelStringFormat := new GDIp.StringFormat()
 		labelBrush        := new GDIp.SolidBrush( label.getColor() )
 		
-		xGridEnum := This.getGridLines().x._NewEnum()
-		Loop
+		for each, pos in grid.lines.1
 		{
-			if !xGridEnum.Next( index, pos )
-				break
-			tPoint    := This.getPointFieldToPixel( [ xPos := pos.1.1, 0 ], 0, 2, 1 )
-			tPoint.2  := axesPixelOrigin.2
-			str       := Format( "{:.2f}", xPos )
+			if ( mod( Round( pos.1.1 / grid.size.1 ), label.getFieldsPerLabel() ) )
+				continue
+			tPoint    := This.getPointFieldToPixel( [ xPos := pos.1.1, axesOrigin.2 ], 0, 2, 1 )
+			;Msgbox % disp( tPoint )
+			str       := fitNr( xPos, 3 )
 			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
 			strRect.rect.1 := tPoint.1 - strRect.rect.3/2
-			strRect.rect.2 := tPoint.2 + penWidth/2 + margin.2
+			strRect.rect.2 := tPoint.2 + 2 + margin.2
+			;Msgbox % disp( strRect )
 			graphics.drawString( str, labelFont, strRect.rect, labelStringFormat, labelBrush )
-			while ( A_Index < label.getFieldsPerLabel() )
-			{	
-				if !xGridEnum.Next( index, pos )
-					break, 2
-			}
 		}
-		yGridEnum := This.getGridLines().y._NewEnum()
-		Loop
+		for each, pos in grid.lines.2
 		{
-			if !yGridEnum.Next( index, pos )
-				break
-			tPoint    := This.getPointFieldToPixel( [ 0, yPos := pos.2.2 ], 0, 2, 1 )
-			tPoint.1  := axesPixelOrigin.1
-			str       := Format( "{:.2f}", yPos )
+			if ( mod( Round( pos.2.2 / grid.size.2 ), label.getFieldsPerLabel() ) )
+				continue
+			tPoint    := This.getPointFieldToPixel( [ axesOrigin.1, yPos := pos.2.2 ], 0, 2, 1 )
+			str       := fitNr( yPos, 3 )
 			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
-			strRect.rect.1 := tPoint.1 - penWidth/2 - margin.3 - strRect.rect.3
+			strRect.rect.1 := tPoint.1 - 2 - margin.3 - strRect.rect.3
 			strRect.rect.2 := tPoint.2 - strRect.rect.4/2
 			graphics.drawString( str, labelFont, strRect.rect, labelStringFormat, labelBrush )
-			while ( A_Index < label.getFieldsPerLabel() )
-			{	
-				if !yGridEnum.Next( index, pos )
-					break, 2
-			}
 		}
 	}
 	
@@ -932,4 +953,19 @@ log2( value )
 modulo(x, y)
 {
 	return x - ((x // y) * y)
+}
+
+fitNr( nr, significants )
+{
+	nr := Format( "{:.15f}", nr )
+	neg := subStr( nr, 1, 1 ) = "-"
+	splNr1 := StrSplit( nr, ".", "-" )
+	nr := splNr1.1
+	if ( StrLen( nr ) >= significants || splNr1.2 = "000000000000000" )
+		return ( neg?"-":"" ) . nr
+	splNr2 := StrSplit( splNr1.2 )
+	splNr2.1 := "." . splNr2.1
+	Loop % significants - StrLen( nr )
+		nr .= splNr2[ A_Index ]
+	return ( neg?"-":"" ) . nr
 }
