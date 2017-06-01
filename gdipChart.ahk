@@ -842,7 +842,7 @@ class gdipChart
 	{
 		label             := This.getLabel()
 		if ( label.getVisible() && This.getAxes().getVisible() )
-		
+			
 		graphics  := This.bitmap.getGraphics()
 		
 		axesOrigin:= This.geometry.axes.origin
@@ -858,20 +858,18 @@ class gdipChart
 		{
 			if ( mod( Round( pos.1.1 / grid.size.1 ), label.getFieldsPerLabel() ) )
 				continue
-			tPoint    := This.getPointFieldToPixel( [ xPos := pos.1.1, axesOrigin.2 ], 0, 2, 1 )
-			;Msgbox % disp( tPoint )
+			tPoint    := [ This.getPointFieldToPixel( [ xPos := pos.1.1, 0 ], 0, 2, 1 ).1, This.getPointFieldToPixel( [ 0, axesOrigin.2 ], !This.getAxes().getAttached(), 2, 1 ).2 ]
 			str       := fitNr( xPos, 3 )
 			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
 			strRect.rect.1 := tPoint.1 - strRect.rect.3/2
 			strRect.rect.2 := tPoint.2 + 2 + margin.2
-			;Msgbox % disp( strRect )
 			graphics.drawString( str, labelFont, strRect.rect, labelStringFormat, labelBrush )
 		}
 		for each, pos in grid.lines.2
 		{
 			if ( mod( Round( pos.2.2 / grid.size.2 ), label.getFieldsPerLabel() ) )
 				continue
-			tPoint    := This.getPointFieldToPixel( [ axesOrigin.1, yPos := pos.2.2 ], 0, 2, 1 )
+			tPoint    := [ This.getPointFieldToPixel( [ axesOrigin.1, 0 ], !This.getAxes().getAttached(), 2, 1 ).1, This.getPointFieldToPixel( [ 0, yPos := pos.2.2 ], 0, 2, 1 ).2 ]
 			str       := fitNr( yPos, 3 )
 			strRect   := graphics.measureString( str, labelFont, This.bitmap.getRect(), labelStringFormat )
 			strRect.rect.1 := tPoint.1 - 2 - margin.3 - strRect.rect.3
