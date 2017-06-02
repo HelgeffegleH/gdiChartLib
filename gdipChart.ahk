@@ -745,6 +745,10 @@ class gdipChart
 	
 	draw()
 	{
+		static drawing := 0
+		if ( drawing )
+			return
+		drawing := 1
 		if This.getVisible()
 		{
 			if ( This.hasChanged && !This.getFreezeRedraw() )
@@ -759,6 +763,7 @@ class gdipChart
 			}
 			This.flushToGUI()
 		}
+		drawing := 0
 	}
 	
 	prepareBuffers()
@@ -898,6 +903,8 @@ class gdipChart
 	
 	flushToFile( fileName )
 	{
+		if This.hasChanged
+			This.draw()
 		This.bitmap.saveToFile( fileName )
 	}
 	

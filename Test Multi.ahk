@@ -16,6 +16,7 @@ Loop 3
 	streams.push( stream )
 }
 chart1.setVisible()
+chart1.flushToFile( "Screenshot3.png" )
 return
 
 GUIClose:
