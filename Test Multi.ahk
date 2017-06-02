@@ -15,6 +15,7 @@ Loop 3
 	stream.setVisible()
 	streams.push( stream )
 }
+chart1.setMargin( [ 30, 20, 10, 20 ] )
 chart1.setVisible()
 chart1.flushToFile( "Screenshot3.png" )
 return
