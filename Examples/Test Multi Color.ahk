@@ -43,7 +43,7 @@ for each, color in bColor
 
 chart1.freezeRedraw( 1 )
 chart1.setFieldRect( [ frameNr, 0, 5, 255 ] )
-chart1.setBackgroundColor( ibColor )
+chart1.setColor( ibColor )
 chart1.freezeRedraw( 0 )
 ;^ Move Field and set BackgroundColor
 ;enable freezeRedraw with freezeRedraw( 1 ) to disable automatic redrawing and freezeRedraw( 0 ) to draw all new changes.

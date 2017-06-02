@@ -22,7 +22,7 @@ class gdipChart
 			This.setControlRect( controlRect )
 		This.setFieldRect( isObject( fieldRect ) ? fieldRect : [ 0, 0, 1, 1 ] )
 		This.setType( type )
-		This.setBackgroundColor( 0xFFFFFFFF )
+		This.setColor( 0xFFFFFFFF )
 		This.setMargin( [ 20, 20, 20, 20 ] )
 	}
 	
@@ -48,7 +48,7 @@ class gdipChart
 	}
 	
 	
-	setBackgroundColor( color )
+	setColor( color )
 	{
 		if ( This.color != color )
 		{
@@ -57,7 +57,7 @@ class gdipChart
 		}
 	}
 	
-	getBackgroundColor()
+	getColor()
 	{
 		return This.color
 	}
@@ -174,7 +174,7 @@ class gdipChart
 	}
 	
 	
-	addDataStream( data := "", color:="", name := "" )
+	addDataStream( data := "", color := 0xFF000000, name := "" )
 	{
 		dataStream := new This.DataStream( This, data, color, name )
 		This.allData[ &dataStream ] := new indirectReference( dataStream )
@@ -217,6 +217,7 @@ class gdipChart
 					This.parent.addVisibleData( This )
 				else
 					This.parent.removeVisibleData( This )
+				This.parent.touch()
 			}
 		}
 		
@@ -780,7 +781,7 @@ class gdipChart
 	
 	drawBackGround()
 	{
-		This.bitmap.getGraphics().clear( This.getBackgroundColor() )
+		This.bitmap.getGraphics().clear( This.getColor() )
 	}
 	
 	drawGrid()
