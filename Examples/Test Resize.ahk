@@ -1,9 +1,9 @@
-﻿#Include %A_LineFile%/../gdipChart.ahk
+﻿#Include %A_LineFile%/../../gdipChart.ahk
 
 SetBatchLines,-1
 
 GUI,New
-GUI +hwndGUI1
+GUI +hwndGUI1 +Resize
 GUI,Show, w600 h400
 
 chart1 := new gdipChart( GUI1, "", [ 0, 0, 256, 256 ] )

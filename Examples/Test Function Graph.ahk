@@ -1,4 +1,4 @@
-#Include gdipChart.ahk
+#Include %A_LineFile%/../../gdipChart.ahk
 gosub, examples
 class dataField {
 	; requires gdipChart.ahk by nnnik, see https://github.com/nnnik/gdiChartLib or https://autohotkey.com/boards/viewtopic.php?f=6&t=31533
@@ -51,7 +51,7 @@ class dataField {
 		chart.setVisible()
 		Gui, % GUIHWND ": Show", w600 h400, % "data field preview"
 		; Screenshot, handle yourself.
-		chart.flushToFile( "Screenshot2.png" )
+		chart.flushToFile( "Screenshots/Function Graph.png" )
 		WinWaitClose, % "ahk_id " GUIHWND
 		Gui % GUIHWND ": Destroy"
 	}

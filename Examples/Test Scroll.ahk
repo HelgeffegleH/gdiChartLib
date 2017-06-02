@@ -1,21 +1,28 @@
-﻿#Include %A_LineFile%/../gdipChart.ahk
+﻿#Include %A_LineFile%/../../gdipChart.ahk
 
 SetBatchLines,-1
 
 GUI,New
-GUI +hwndGUI1 +Resize
-GUI,Show, w600 h400
+GUI +hwndGUI1
 
-chart1 := new gdipChart( GUI1, "", [ 0, 0, 256, 256 ] )
+chart1 := new gdipChart( GUI1, "", [ 0, 0, 16, 256 ] )
 
-stream := chart1.addDataStream( createRandomData(), 0xFF00FF00 )
+
+stream := chart1.addDataStream( createRandomData( 0,  0, 1000, 256), 0xFF00FF00 )
+startT := A_TickCount
 
 stream.setVisible()
 chart1.setVisible()
+GUI,Show, w600 h400
+SetTimer,scroll,15
 return
 
 GUIClose:
 ExitApp
+
+scroll:
+chart1.setFieldRect( [ ( A_TickCount - startT ) / 150,0 ,16, 256 ] )
+return
 
 createRandomData( x := 0, y := 0, w := 256, h := 256, variance := 5, steps := 1 )
 {

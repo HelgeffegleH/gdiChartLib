@@ -1,4 +1,4 @@
-﻿#Include %A_LineFile%/../gdipChart.ahk
+﻿#Include %A_LineFile%/../../gdipChart.ahk
 
 SetBatchLines,-1
 
@@ -17,7 +17,7 @@ Loop 3
 }
 chart1.setMargin( [ 30, 20, 10, 20 ] )
 chart1.setVisible()
-chart1.flushToFile( "Screenshot3.png" )
+chart1.flushToFile( "Screenshots/Multi.png" )
 return
 
 GUIClose:
