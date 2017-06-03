@@ -1,4 +1,4 @@
-﻿#Include gdipChart.ahk
+﻿#Include %A_LineFile%/../../gdipChart.ahk
 
 /*
 Original Example by Helgef - but it really does look beautiful
@@ -17,7 +17,7 @@ chart.getGrid().setFieldSize( [ 3.14, 1 ] )
 stream.setVisible()
 chart.setVisible()
 GUI,Show, w600 h400
-chart.flushToFile( "Screenshot.png" )
+chart.flushToFile( "Screenshots/Screenshot.png" )
 return
 
 GUIClose:

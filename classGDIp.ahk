@@ -88,7 +88,9 @@ class GDIp
 		getGraphics()
 		{
 			if !( This.hasKey( "pGraphics" ) )
+			{
 				This.pGraphics := new GDIp.Graphics( This )
+			}
 			return This.pGraphics
 		}
 		
@@ -180,6 +182,18 @@ class GDIp
 		setInterpolationMode( interpolationMode )
 		{
 			return DllCall( "gdiplus\GdipSetInterpolationMode", "Ptr", This.ptr, "Int", interpolationMode )
+		}
+		
+		;TextRenderingHintSystemDefault              = 0,
+		;TextRenderingHintSingleBitPerPixelGridFit   = 1,
+		;TextRenderingHintSingleBitPerPixel          = 2,
+		;TextRenderingHintAntiAliasGridFit           = 3,
+		;TextRenderingHintAntiAlias                  = 4,
+		;TextRenderingHintClearTypeGridFit           = 5 
+		
+		setTextRenderingHint( textRenderingHint )
+		{
+			return DllCall( "gdiplus\GdipSetTextRenderingHint", "Ptr", This.ptr, "UInt", textRenderingHint )
 		}
 		
 		clear( color = 0 )
@@ -315,6 +329,27 @@ class GDIp
 			Loop, 4
 				outData.rect.Push( numGet( outputRectF, A_Index * 4 -4, "float" ) )
 			return outData
+		}
+		
+		/*
+			drawBezier: draw a Bezier Curve onto the graphics with the specified pen and points
+			
+			pen: 	the pen you want to use to draw on the graphics
+			
+			points: 	An array of starting and control points of a Bezier line
+			A single Bezier line consists of 4 points a starting point 2 control points and an end point
+			The line never actually goes through the control points
+			The control points control the tangent in the starting and end point and their distance controls how strongly the curve follows there
+			
+		*/
+		
+		drawBezier( pen, points )
+		{
+			pointsBuffer := ""
+			VarSetCapacity( pointsBuffer,  8 * points.Length(), 0 )
+			for each, point in points
+				NumPut( point.1, pointsBuffer, each * 8 - 8, "float" ), NumPut( point.2, pointsBuffer, each * 8 - 4, "float" )
+			return DllCall( "gdiplus\GdipDrawBeziers", "UPtr", This.ptr, "UPtr", pen.getpPen(), "UPtr", &pointsBuffer, "UInt", points.Length() )
 		}
 		
 		/*
